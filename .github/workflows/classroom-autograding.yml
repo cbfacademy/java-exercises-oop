@@ -12,11 +12,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up JDK 19 and cache Maven
+      - name: Set up JDK 21 and cache Maven
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '19'
+          java-version: '21'
           cache: maven
 
       - name: Run tests with Maven Wrapper
