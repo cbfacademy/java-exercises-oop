@@ -32,8 +32,7 @@ jobs:
         with:
           name: JUnit Results
           path: target/surefire-reports/**/*.xml
-          # use 'maven-surefire' or 'junit5-junitxml' depending on your surefire configuration
-          reporter: maven-surefire
+          reporter: java-junit
 
       - name: Report score back to Classroom
         uses: github-education-resources/autograding-command-grader@v1
