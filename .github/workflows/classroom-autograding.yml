@@ -1,0 +1,43 @@
+# .github/workflows/classroom-maven.yml
+name: Autograde
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 19 and cache Maven
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '19'
+          cache: maven
+
+      - name: Run tests with Maven Wrapper
+        run: |
+          chmod +x mvnw
+          ./mvnw test -B
+        continue-on-error: true
+
+      - name: Parse JUnit results
+        id: parse
+        if: always()
+        uses: dorny/test-reporter@v2
+        with:
+          name: JUnit Results
+          path: target/surefire-reports/**/*.xml
+          # use 'maven-surefire' or 'junit5-junitxml' depending on your surefire configuration
+          reporter: maven-surefire
+
+      - name: Report score back to Classroom
+        uses: github-education-resources/autograding-command-grader@v1
+        with:
+          test-name: JUnit-Suite
+          command: echo "Passed ${{ steps.parse.outputs.passed }} of ${{ steps.parse.outputs.total }} tests"
+          max-score: ${{ steps.parse.outputs.total }}
