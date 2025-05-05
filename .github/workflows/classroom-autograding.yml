@@ -31,7 +31,7 @@ jobs:
         uses: dorny/test-reporter@v2
         with:
           name: JUnit Results
-          path: **/target/surefire-reports/**/*.xml
+          path: "**/target/surefire-reports/**/*.xml"
           reporter: java-junit
 
       - name: Report score back to Classroom
