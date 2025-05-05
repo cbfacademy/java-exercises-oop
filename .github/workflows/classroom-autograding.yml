@@ -20,6 +20,7 @@ jobs:
           cache: maven
 
       - name: Run tests with Maven Wrapper
+        id: test
         run: |
           chmod +x mvnw
           ./mvnw test -B
@@ -27,16 +28,22 @@ jobs:
 
       - name: Parse JUnit results
         id: parse
-        if: always()
+        if: always() && success() || failure()
         uses: dorny/test-reporter@v2
         with:
           name: JUnit Results
           path: "**/target/surefire-reports/**/*.xml"
           reporter: java-junit
+          fail-on-empty: false
 
       - name: Report score back to Classroom
         uses: github-education-resources/autograding-command-grader@v1
         with:
           test-name: JUnit-Suite
-          command: echo "Passed ${{ steps.parse.outputs.passed }} of ${{ steps.parse.outputs.total }} tests"
-          max-score: ${{ steps.parse.outputs.total }}
+          command: |
+            if [ -z "$(find . -path '**/target/surefire-reports/**/*.xml' -type f)" ]; then
+              echo "Passed 0 of 0 tests"
+            else
+              echo "Passed ${{ steps.parse.outputs.passed }} of ${{ steps.parse.outputs.total }} tests"
+            fi
+          max-score: ${{ steps.parse.outputs.total || 0 }}
