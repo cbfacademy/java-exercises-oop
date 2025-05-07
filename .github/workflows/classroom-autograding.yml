@@ -32,18 +32,38 @@ jobs:
         uses: dorny/test-reporter@v2
         with:
           name: JUnit Results
-          path: "**/target/surefire-reports/**/*.xml"
+          path: "**/target/surefire-reports/*.xml"
           reporter: java-junit
           fail-on-empty: false
+          fail-on-error: false
 
-      - name: Report score back to Classroom
-        uses: github-education-resources/autograding-command-grader@v1
+      - name: Calculate total tests
+        id: calc-total
+        run: |
+          passed=${{ steps.parse.outputs.passed || 0 }}
+          failed=${{ steps.parse.outputs.failed || 0 }}
+          skipped=${{ steps.parse.outputs.skipped || 0 }}
+          total=$((passed + failed + skipped))
+          echo "total=$total" >> $GITHUB_OUTPUT
+
+      - name: Grade JUnit test scores
+        id: grade-junit
+        uses: cbfacademy/autograding-command-grader@dev
         with:
           test-name: JUnit-Suite
           command: |
-            if [ -z "$(find . -path '**/target/surefire-reports/**/*.xml' -type f)" ]; then
-              echo "Passed 0 of 0 tests"
-            else
-              echo "Passed ${{ steps.parse.outputs.passed }} of ${{ steps.parse.outputs.total }} tests"
-            fi
-          max-score: ${{ steps.parse.outputs.total || 0 }}
+            ./.github/workflows/grade-junit.sh ${{ steps.parse.outputs.passed || 0 }} ${{ steps.parse.outputs.failed || 0 }} ${{ steps.parse.outputs.skipped || 0 }}
+          max-score: 70
+
+      - name: Test output
+        run: |
+          result=$(echo "${{steps.grade-junit.outputs.result}}" | base64 -d)
+          echo "GRADE-JUNIT_RESULTS: $result"
+
+      - name: Autograding Reporter
+        uses: cbfacademy/autograding-grading-reporter@dev
+        env:
+          GRADE-JUNIT_RESULTS: "${{steps.grade-junit.outputs.result}}"
+        with:
+          runners: grade-junit
+ 
