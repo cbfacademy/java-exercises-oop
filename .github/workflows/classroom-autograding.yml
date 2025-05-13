@@ -4,7 +4,7 @@ on:
   push:
 
 env:
-  GRADING_REPO: cbfacademy/java-exercises-preview
+  GRADING_REPO: cbfacademy/autograding-java-exercises
   GRADING_REPO_PATH: grading-repo
   STUDENT_REPO_PATH: student-repo
 
