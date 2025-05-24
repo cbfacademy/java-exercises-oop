@@ -254,6 +254,7 @@ jobs:
             return `${aiScore}/100`;
 
       - name: Close grading PR
+        if: always() && steps.create-grading-pr.outputs.pr_number != ''
         env:
           GH_TOKEN: ${{ secrets.CLASSROOM_TOKEN }}
         run: |
