@@ -335,7 +335,7 @@ jobs:
               if (percent >= 60) return 'C';
               if (percent >= 50) return 'D';
               if (percent >= 40) return 'E';
-              return 'U';
+              return 'Fail';
             }
 
             function calculateFunctionalityScore(passed, total) {
