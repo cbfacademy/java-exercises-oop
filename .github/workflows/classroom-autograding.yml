@@ -40,7 +40,14 @@ jobs:
         run: |
           cd ${{ env.STUDENT_REPO_PATH }}
           chmod +x mvnw
-          ./mvnw test -B
+          # Extract module names from pom.xml
+          MODULES=$(xmllint --xpath "//modules/module/text()" pom.xml)
+          for dir in $MODULES; do
+            if [ -d "$dir" ]; then
+              echo "Running tests for $dir..."
+              ./mvnw test -B --projects $dir || true
+            fi
+          done
         continue-on-error: true
 
       - name: Parse test results
