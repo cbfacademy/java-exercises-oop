@@ -64,7 +64,7 @@ jobs:
             const passed = parseInt(${{ steps.parse.outputs.passed || 0 }}, 10);
             const failed = parseInt(${{ steps.parse.outputs.failed || 0 }}, 10);
             const skipped = parseInt(${{ steps.parse.outputs.skipped || 0 }}, 10);
-            const total = passed + failed + skipped;
+            const total = (passed + failed + skipped) || 70;
             const result = `${passed}/${total}`
 
             core.setOutput('total', total);
