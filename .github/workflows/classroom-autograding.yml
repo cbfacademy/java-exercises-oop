@@ -100,8 +100,8 @@ jobs:
           echo "PR_NUMBER=$PR_NUMBER" >> $GITHUB_ENV
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
 
-      - name: Get AI score
-        id: get-ai-score
+      - name: Get agent score
+        id: get-agent-score
         uses: actions/github-script@v7
         env:
           PR_NUMBER: ${{ steps.create-grading-pr.outputs.pr_number }}
@@ -283,7 +283,7 @@ jobs:
             const testsResult = '${{ steps.get-tests-score.outputs.result }}';
             const tests = parseResult(testsResult, 70);
             // Parse grade-ai result (e.g., 27/100), scale to 30
-            const aiResult = '${{ steps.get-ai-score.outputs.result }}';
+            const aiResult = '${{ steps.get-agent-score.outputs.result }}';
             const ai = parseResult(aiResult, 30);
             // Sum
             const totalEarned = tests.earned + ai.earned;
