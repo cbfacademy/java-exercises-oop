@@ -2,6 +2,8 @@ name: Classroom Autograding
 
 on:
   push:
+    branches:
+      - main
 
 env:
   GRADING_REPO: cbfacademy/autograding-java-exercises
