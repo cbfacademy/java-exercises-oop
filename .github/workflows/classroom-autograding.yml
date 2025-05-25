@@ -291,10 +291,10 @@ jobs:
 
             // Parse get-tests-score result (e.g., 34/42), scale to 70%
             const testsResult = '${{ steps.get-tests-score.outputs.result }}';
-            const tests = parseResult(testsResult, ${env.TEST_SCORE_MARKS});
+            const tests = parseResult(testsResult, ${{ env.TEST_SCORE_MARKS }});
             // Parse get-agent-score result (e.g., 27/100), scale to 30%
             const aiResult = '${{ steps.get-agent-score.outputs.result }}';
-            const ai = parseResult(aiResult, ${env.AGENT_SCORE_MARKS});
+            const ai = parseResult(aiResult, ${{ env.AGENT_SCORE_MARKS }});
             // Sum
             const totalEarned = tests.earned + ai.earned;
             const totalAvailable = tests.available + ai.available;
