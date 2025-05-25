@@ -7,6 +7,9 @@ env:
   GRADING_REPO: cbfacademy/autograding-java-exercises
   GRADING_REPO_PATH: grading-repo
   STUDENT_REPO_PATH: student-repo
+  MAX_TESTS: ${{ vars.MAX_TESTS || 42 }}
+  TEST_SCORE_MARKS: ${{ vars.TEST_SCORE_MARKS || 70 }}
+  AGENT_SCORE_MARKS: ${{ vars.AGENT_SCORE_MARKS || 30 }}
 
 jobs:
   autograding:
@@ -71,7 +74,7 @@ jobs:
             const passed = parseInt(${{ steps.parse.outputs.passed || 0 }}, 10);
             const failed = parseInt(${{ steps.parse.outputs.failed || 0 }}, 10);
             const skipped = parseInt(${{ steps.parse.outputs.skipped || 0 }}, 10);
-            const total = (passed + failed + skipped) || 70;
+            const total = ${env.MAX_TESTS};
             const result = `${passed}/${total}`
 
             core.setOutput('total', total);
@@ -286,12 +289,12 @@ jobs:
               return { earned, available };
             }
 
-            // Parse grade-tests result (e.g., 34/42)
+            // Parse get-tests-score result (e.g., 34/42), scale to 70%
             const testsResult = '${{ steps.get-tests-score.outputs.result }}';
-            const tests = parseResult(testsResult, 70);
-            // Parse grade-ai result (e.g., 27/100), scale to 30
+            const tests = parseResult(testsResult, ${env.TEST_SCORE_MARKS});
+            // Parse get-agent-score result (e.g., 27/100), scale to 30%
             const aiResult = '${{ steps.get-agent-score.outputs.result }}';
-            const ai = parseResult(aiResult, 30);
+            const ai = parseResult(aiResult, ${env.AGENT_SCORE_MARKS});
             // Sum
             const totalEarned = tests.earned + ai.earned;
             const totalAvailable = tests.available + ai.available;
