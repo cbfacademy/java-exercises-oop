@@ -326,6 +326,45 @@ jobs:
             core.setOutput('earned', totalEarned);
             core.setOutput('available', totalAvailable);
 
+      - name: Trigger Airtable update
+        uses: actions/github-script@v7
+        env:
+          GRADING_REPO: ${{ env.GRADING_REPO }}
+          REPO_URL: ${{ github.repository }}
+          TEST_SCORE: ${{ steps.get-tests-score.outputs.passed }}
+          AGENT_SCORE: ${{ steps.get-agent-score.outputs.result }}
+        with:
+          github-token: ${{ secrets.CLASSROOM_TOKEN }}
+          script: |
+            const [owner, repo] = process.env.GRADING_REPO.split('/');
+            
+            // Convert agent score from percentage to 0-5 scale
+            const agentScorePercent = parseInt(process.env.AGENT_SCORE, 10);
+            const agentScore = Math.round((agentScorePercent / 100) * 5);
+            
+            // Convert test score to 0-5 scale
+            const testScore = Math.round((parseInt(process.env.TEST_SCORE, 10) / ${{ env.MAX_TESTS }}) * 5);
+            
+            // Ensure repository URL has trailing slash
+            const repoUrl = process.env.REPO_URL.endsWith('/') ? process.env.REPO_URL : `${process.env.REPO_URL}/`;
+            
+            try {
+              await github.rest.actions.createWorkflowDispatch({
+                owner,
+                repo,
+                workflow_id: 'update-airtable.yml',
+                ref: 'main',
+                inputs: {
+                  test_score: testScore.toString(),
+                  agent_score: agentScore.toString(),
+                  repository_url: repoUrl
+                }
+              });
+              console.log('Successfully triggered Airtable update workflow');
+            } catch (error) {
+              core.setFailed(`Failed to trigger Airtable update workflow: ${error.message}`);
+            }
+
       - name: Post student feedback
         uses: actions/github-script@v7
         env:
