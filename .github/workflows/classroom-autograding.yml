@@ -9,14 +9,12 @@ env:
   GRADING_REPO: cbfacademy/autograding-java-exercises
   GRADING_REPO_PATH: grading-repo
   STUDENT_REPO_PATH: student-repo
-  MAX_TESTS: ${{ vars.MAX_TESTS || 42 }}
-  TEST_SCORE_MARKS: ${{ vars.TEST_SCORE_MARKS || 70 }}
-  AGENT_SCORE_MARKS: ${{ vars.AGENT_SCORE_MARKS || 30 }}
+  MAX_TESTS: 42
 
 jobs:
   autograding:
+    if: ${{ !github.event.repository.is_template && github.event.sender.type != 'Bot' }}
     runs-on: ubuntu-latest
-    if: github.event.sender.type != 'Bot'
     steps:
       - name: Checkout grading repo
         uses: actions/checkout@v4
@@ -37,12 +35,12 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
           cache: maven
 
       - uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: "20"
       - run: npm install xml2js
 
       - name: Extract modules from pom.xml
@@ -57,7 +55,7 @@ jobs:
             const parser = new xml2js.Parser();
             const result = await parser.parseStringPromise(pomXml);
             const modules = result.project.modules[0].module || [];
-            
+
             core.setOutput('modules', modules.join(' '));
 
             return modules.join(' ');
@@ -297,57 +295,47 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // Helper function to parse result string
-            function parseResult(result, scaleTo) {
+            // Helper function to parse result string and scale to 5
+            function parseResult(result) {
               const [earnedStr, totalStr] = result.replace(/^"|"$/g, '').split('/');
               let earned = parseInt(earnedStr, 10);
               let available = parseInt(totalStr, 10);
 
-              if (scaleTo !== undefined && available > 0) {
-                earned = Math.round((earned / available) * scaleTo);
-                available = scaleTo;
+              if (available > 0) {
+                earned = Math.round((earned / available) * 5);
+              } else {
+                earned = 0;
               }
-
-              return { earned, available };
+              return earned;
             }
 
-            // Parse get-tests-score result (e.g., 34/42), scale to 70%
-            const testsResult = '${{ steps.get-tests-score.outputs.result }}';
-            const tests = parseResult(testsResult, ${{ env.TEST_SCORE_MARKS }});
-            // Parse get-agent-score result (e.g., 27/100), scale to 30%
-            const aiResult = '${{ steps.get-agent-score.outputs.result }}';
-            const ai = parseResult(aiResult, ${{ env.AGENT_SCORE_MARKS }});
-            // Sum
-            const totalEarned = tests.earned + ai.earned;
-            const totalAvailable = tests.available + ai.available;
+            // Parse get-tests-score and get-agent-score results (e.g., 34/42, 27/100)
+            const testsScore = parseResult('${{ steps.get-tests-score.outputs.result }}');
+            const agentScore = parseResult('${{ steps.get-agent-score.outputs.result }}');
+            // Total out of 10
+            const totalScore = testsScore + agentScore;
 
-            console.log(`Tests score: ${JSON.stringify(tests)}`);
-            console.log(`Agent score: ${JSON.stringify(ai)}`);
-            core.setOutput('earned', totalEarned);
-            core.setOutput('available', totalAvailable);
+            console.log(`Functionality (out of 5): ${testsScore}`);
+            console.log(`Code Quality (out of 5): ${agentScore}`);
+            console.log(`Total (out of 10): ${totalScore}`);
+            core.setOutput('functionality', testsScore);
+            core.setOutput('code_quality', agentScore);
+            core.setOutput('earned', totalScore);
+            core.setOutput('available', 10);
 
       - name: Trigger Airtable update
         uses: actions/github-script@v7
         env:
           GRADING_REPO: ${{ env.GRADING_REPO }}
           REPO_URL: ${{ github.repository }}
-          TEST_SCORE: ${{ steps.get-tests-score.outputs.passed }}
-          AGENT_SCORE: ${{ steps.get-agent-score.outputs.result }}
+          TEST_SCORE: ${{ steps.aggregate-points.outputs.functionality }}
+          AGENT_SCORE: ${{ steps.aggregate-points.outputs.code_quality }}
         with:
           github-token: ${{ secrets.CLASSROOM_TOKEN }}
           script: |
             const [owner, repo] = process.env.GRADING_REPO.split('/');
-            
-            // Convert agent score from percentage to 0-5 scale
-            const agentScorePercent = parseInt(process.env.AGENT_SCORE, 10);
-            const agentScore = Math.round((agentScorePercent / 100) * 5);
-            
-            // Convert test score to 0-5 scale
-            const testScore = Math.round((parseInt(process.env.TEST_SCORE, 10) / ${{ env.MAX_TESTS }}) * 5);
-            
             // Ensure repository URL has trailing slash
             const repoUrl = process.env.REPO_URL.endsWith('/') ? process.env.REPO_URL : `${process.env.REPO_URL}/`;
-            
             try {
               await github.rest.actions.createWorkflowDispatch({
                 owner,
@@ -355,9 +343,9 @@ jobs:
                 workflow_id: 'update-airtable.yml',
                 ref: 'main',
                 inputs: {
-                  test_score: testScore.toString(),
-                  agent_score: agentScore.toString(),
-                  repository_url: repoUrl
+                  test_score: process.env.TEST_SCORE,
+                  agent_score: process.env.AGENT_SCORE,
+                  repository_url: `https://github.com/${repoUrl}`
                 }
               });
               console.log('Successfully triggered Airtable update workflow');
@@ -377,6 +365,8 @@ jobs:
           EARNED: ${{ steps.aggregate-points.outputs.earned }}
           AVAILABLE: ${{ steps.aggregate-points.outputs.available }}
           BOT_USER: ${{ vars.PR_AGENT_BOT_USER }}
+          FUNCTIONALITY: ${{ steps.aggregate-points.outputs.functionality }}
+          CODE_QUALITY: ${{ steps.aggregate-points.outputs.code_quality }}
         with:
           github-token: ${{ secrets.CLASSROOM_TOKEN }}
           script: |
@@ -396,10 +386,8 @@ jobs:
             }
 
             function calculateGrade(earned, available) {
-              const earnedNum = parseInt(earned, 10);
-              const availableNum = parseInt(available, 10);
-              const percent = availableNum > 0 ? (earnedNum / availableNum) * 100 : 0;
-
+              // Calculate grade based on marks out of 10
+              const percent = available > 0 ? (earned / available) * 100 : 0;
               if (percent >= 90) return 'A+';
               if (percent >= 80) return 'A';
               if (percent >= 70) return 'B';
@@ -409,33 +397,21 @@ jobs:
               return 'Fail';
             }
 
-            function calculateFunctionalityScore(passed, total) {
-              const passedNum = parseInt(passed, 10);
-              const totalNum = parseInt(total, 10);
-
-              return totalNum > 0 ? Math.round((passedNum / totalNum) * 100) : 0;
-            }
-
-            function formatBody({ score, comment, gradingRepo, gradingPrId, studentRepo, feedbackPr, passed, total, earned, available }) {
-              const funcScore = calculateFunctionalityScore(passed, total);
+            function formatBody({ score, comment, gradingRepo, gradingPrId, studentRepo, feedbackPr, functionality, codeQuality, earned, available }) {
               const grade = calculateGrade(earned, available);
               let fixedBody = comment.replace(new RegExp(`${gradingRepo}/pull/${gradingPrId}`, 'g'), `${studentRepo}/pull/${feedbackPr}`);
 
               fixedBody = fixedBody.replace(/PR Reviewer Guide/g, 'Exercise Status Report');
               fixedBody = fixedBody.replace(/to aid the review process/g, 'on the current state of your exercise');
 
-              const qualityScoreRowRegex = /<tr><td>🏅&nbsp;<strong>Score<\/strong>: (\d+)<\/td><\/tr>/;
+              // Replace the score table with individual marks out of 5 and overall grade
+              const scoreTableRegex = /<tr><td>🏅&nbsp;<strong>Score<\/strong>: (\d+)<\/td><\/tr>/;
               const rowTemplate = (label, value) => `<tr><td>${label}: <strong>${value}</strong></td></tr>`;
-              const match = fixedBody.match(qualityScoreRowRegex);
+              const funcRow = rowTemplate('Functionality', `${functionality}/5`);
+              const qualityRow = rowTemplate('Code Quality', `${codeQuality}/5`);
+              const gradeRow = rowTemplate('Overall Grade', grade);
 
-              if (match) {
-                const qualityScore = match[1];
-                const funcRow = rowTemplate('Functionality', `${funcScore}%`);
-                const qualityRow = rowTemplate('Code Quality', `${qualityScore}%`);
-                const gradeRow = rowTemplate('Overall Grade', grade);
-
-                fixedBody = fixedBody.replace(qualityScoreRowRegex, `${funcRow}\n${qualityRow}\n${gradeRow}`);
-              }
+              fixedBody = fixedBody.replace(scoreTableRegex, `${funcRow}\n${qualityRow}\n${gradeRow}`);
 
               return fixedBody;
             }
@@ -460,10 +436,10 @@ jobs:
             const gradingRepo = process.env.GRADING_REPO;
             const gradingPrId = process.env.GRADING_PR_ID;
             const studentRepo = process.env.STUDENT_REPO;
-            const passed = process.env.PASSED;
-            const total = process.env.TOTAL;
-            const earned = process.env.EARNED;
-            const available = process.env.AVAILABLE;
+            const functionality = parseFloat(process.env.FUNCTIONALITY);
+            const codeQuality = parseFloat(process.env.CODE_QUALITY);
+            const earned = parseFloat(process.env.EARNED);
+            const available = parseFloat(process.env.AVAILABLE);
             const botUser = process.env.BOT_USER;
             const [owner, repo] = gradingRepo.split('/');
             const [studentOwner, studentRepoName] = studentRepo.split('/');
@@ -473,7 +449,6 @@ jobs:
               feedbackPr = await getFeedbackPrNumber({ github, owner: studentOwner, repo: studentRepoName });
             } catch (err) {
               core.setFailed(`Failed to find feedback PR: ${err.message}`);
-
               return;
             }
 
@@ -483,17 +458,15 @@ jobs:
               bodyRaw = await getBotCommentBody({ github, owner, repo, issue_number: gradingPrId, botUser });
             } catch (err) {
               core.setFailed(`Failed to fetch bot comment: ${err.message}`);
-
               return;
             }
 
             let feedbackBody;
 
             try {
-              feedbackBody = formatBody({ score, comment: bodyRaw, gradingRepo, gradingPrId, studentRepo, feedbackPr, passed, total, earned, available });
+              feedbackBody = formatBody({ score, comment: bodyRaw, gradingRepo, gradingPrId, studentRepo, feedbackPr, functionality, codeQuality, earned, available });
             } catch (err) {
               core.setFailed(`Failed to format feedback body: ${err.message}`);
-
               return;
             }
 
@@ -508,7 +481,6 @@ jobs:
               });
             } catch (err) {
               core.setFailed(`Failed to post feedback comment: ${err.message}`);
-
               return;
             }
 
