@@ -13,7 +13,7 @@ env:
 
 jobs:
   autograding:
-    if: ${{ !github.event.repository.is_template && github.event.sender.type != 'Bot' }}
+    if: ${{ github.event.repository.fork && github.event.repository.owner.type == 'Organization' && startsWith(github.repository_owner, 'cbfacademy') && github.event.sender.type != 'Bot' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout grading repo
