@@ -195,15 +195,15 @@ Inside the `com.cbfacademy.shapes` package under the `shapes` module, create an 
 
 In the same package, create a concrete class `Sphere` that extends `Shape`:
 - `Sphere(double radius)` - constructor
-- `double getArea()` - overrides the base method. The value is given by the formula (`4` * `𝛑` * (`radius`<sup>2</sup>))
+- `double getArea()` - overrides the base method. The value is given by the formula: `4 * 𝛑 * (radius^2)` (where `radius^2` = radius<sup>2</sup>)
 
 In the same package, create a concrete class `Rectangle` that extends `Shape`:
 - `Rectangle(double length, double width)` - constructor
-- `double getArea()` - overrides the base method. The value is given by the formula (`length` * `width`)
+- `double getArea()` - overrides the base method. The value is given by the formula: `length * width`
 
 In the same package, create a concrete class `Cylinder` that extends `Shape`:
 - `Cylinder(double radius, double height)` - constructor
-- `double getArea()` - overrides the base method. The value is given by the formula (`height` * `𝛑` * (`radius`<sup>2</sup>)).
+- `double getArea()` - overrides the base method. The value is given by the formula: `2 * 𝛑 * radius * (height + radius)`.
 
 #### :information_source: Notes
 Consider the appropriate visibility of all constructors, methods and instance variables

@@ -42,7 +42,7 @@ public class ShapeTest {
         for (Shape shape : shapeArray) {
             switch (shape.getClass().getSimpleName()) {
                 case "Cylinder":
-                    area = cylinderHeight * Math.PI * Math.pow(cylinderRadius, 2);
+                    area = (cylinderHeight + cylinderRadius) * 2 * Math.PI * cylinderRadius;
                     break;
                 case "Rectangle":
                     area = rectangleLength * rectangleWidth;
