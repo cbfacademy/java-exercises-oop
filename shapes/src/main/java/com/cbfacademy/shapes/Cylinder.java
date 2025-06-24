@@ -20,12 +20,12 @@ public class Cylinder extends Shape {
     }
 
     /**
-     * Calculates the area of the cylinder using the formula (height * π * (radius^2)).
+     * Calculates the area of the cylinder using the formula: (height + radius) * 2 * π * radius.
      *
      * @return The area of the cylinder.
      */
     @Override
     public double getArea() {
-        return height * Math.PI * (radius * radius);
+        return (height + radius) * 2 * Math.PI * radius;
     }
 }
